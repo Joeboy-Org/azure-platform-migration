@@ -35,7 +35,7 @@ jobs:
     with:
       GH_ENVIRONMENT: ${{ inputs.GH_ENVIRONMENT }}
       TF_ENVIRONMENT: ${{ inputs.TF_ENVIRONMENT }}
-      TF_WORKSPACE:  ${{ inputs.TF_WORKSPACE}}
+      TF_WORKSPACE:  ${{ inputs.TF_WORKSPACE}}/${{ inputs.TF_ENVIRONMENT }}/sub-001
       TF_PLAN: true
 
   TfApply:
@@ -46,4 +46,4 @@ jobs:
     with:
       GH_ENVIRONMENT: ${{ inputs.GH_ENVIRONMENT }}
       TF_ENVIRONMENT: ${{ inputs.TF_ENVIRONMENT }}
-      TF_WORKSPACE:  ${{ inputs.TF_WORKSPACE}}
+      TF_WORKSPACE:  ${{ inputs.TF_WORKSPACE}}/${{ inputs.TF_ENVIRONMENT }}/sub-001
