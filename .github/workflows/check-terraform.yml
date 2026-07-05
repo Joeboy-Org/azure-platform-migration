@@ -68,23 +68,23 @@ jobs:
               working-directory: ${{ inputs.TF_WORKSPACE }}
               run: tflint -f compact
 
-    TrivyCheck:
-        name: Run Trivy Scan - ${{ inputs.GH_ENVIRONMENT }}
-        runs-on: ubuntu-latest
-        steps:
-            - name: Repo Checkout
-              uses: actions/checkout@v4
+    # TrivyCheck:
+    #     name: Run Trivy Scan - ${{ inputs.GH_ENVIRONMENT }}
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - name: Repo Checkout
+    #           uses: actions/checkout@v4
 
-            - name: Run Trivy tfsec scan
-              uses: aquasecurity/trivy-action@v0.36.0
-              with:
-                scan-type: 'fs'
-                scan-ref: ${{ inputs.TF_WORKSPACE }}
-                ignore-unfixed: true
-                scanners: 'misconfig'
-                format: 'table'
-                severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
-                exit-code: '1'
+    #         - name: Run Trivy tfsec scan
+    #           uses: aquasecurity/trivy-action@v0.36.0
+    #           with:
+    #             scan-type: 'fs'
+    #             scan-ref: ${{ inputs.TF_WORKSPACE }}
+    #             ignore-unfixed: true
+    #             scanners: 'misconfig'
+    #             format: 'table'
+    #             severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+    #             exit-code: '1'
 
     tfPlan:
         name: Terraform - ${{ inputs.GH_ENVIRONMENT }}

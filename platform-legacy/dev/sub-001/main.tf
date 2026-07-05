@@ -67,7 +67,7 @@ resource "azurerm_network_security_group" "web" {
     destination_address_prefix = "*"
   }
 
- security_rule {
+  security_rule {
     name                       = "AllowRDPFromBastionOnly"
     priority                   = 120
     direction                  = "Inbound"
