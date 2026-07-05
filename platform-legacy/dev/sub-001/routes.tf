@@ -18,3 +18,13 @@ resource "azurerm_route" "routes" {
   next_hop_type          = each.value.next_hop_type
   next_hop_in_ip_address = each.value.next_hop_type == "VirtualAppliance" ? each.value.next_hop_ip : null
 }
+
+resource "azurerm_subnet_route_table_association" "app" {
+  subnet_id      = azurerm_subnet.app.id
+  route_table_id = azurerm_route_table.custom.id
+}
+
+resource "azurerm_subnet_route_table_association" "data" {
+  subnet_id      = azurerm_subnet.data.id
+  route_table_id = azurerm_route_table.custom.id
+}

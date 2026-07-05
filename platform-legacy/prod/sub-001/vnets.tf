@@ -1,5 +1,5 @@
 resource "azurerm_virtual_network" "shared" {
-  name                = "vnet-shared-prod"
+  name                = "vnet-shared-${var.environment}"
   address_space       = ["10.2.0.0/16"]
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
@@ -27,7 +27,7 @@ resource "azurerm_subnet" "shared_monitoring" {
 }
 
 resource "azurerm_virtual_network" "dmz" {
-  name                = "vnet-dmz-prod"
+  name                = "vnet-dmz-${var.environment}"
   address_space       = ["10.3.0.0/16"]
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
@@ -55,7 +55,7 @@ resource "azurerm_subnet" "dmz_proxy" {
 }
 
 resource "azurerm_virtual_network" "mgmt" {
-  name                = "vnet-mgmt-prod"
+  name                = "vnet-mgmt-${var.environment}"
   address_space       = ["10.4.0.0/16"]
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
@@ -83,7 +83,7 @@ resource "azurerm_subnet" "mgmt_monitoring" {
 }
 
 resource "azurerm_virtual_network" "dr" {
-  name                = "vnet-dr-prod"
+  name                = "vnet-dr-${var.environment}"
   address_space       = ["10.5.0.0/16"]
   location            = "East US 2"
   resource_group_name = azurerm_resource_group.main.name

@@ -20,3 +20,7 @@ variable "windows_vm_admin_password" {
 variable "environment" {
   type = string
 }
+
+variable "users" {
+  type = list(string)
+}

@@ -31,6 +31,13 @@ resource "azurerm_subnet" "data" {
   address_prefixes     = ["10.0.3.0/24"]
 }
 
+resource "azurerm_subnet" "bastion" {
+  name                 = "AzureBastionSubnet"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.4.0/26"]
+}
+
 resource "azurerm_network_security_group" "web" {
   name                = "nsg-web-${var.environment}"
   location            = azurerm_resource_group.main.location
@@ -44,7 +51,7 @@ resource "azurerm_network_security_group" "web" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "80"
-    source_address_prefix      = "*"
+    source_address_prefix      = "104.28.186.98/32"
     destination_address_prefix = "*"
   }
 
@@ -56,19 +63,32 @@ resource "azurerm_network_security_group" "web" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "443"
-    source_address_prefix      = "*"
+    source_address_prefix      = "104.28.186.98/32"
     destination_address_prefix = "*"
   }
 
-  security_rule {
-    name                       = "allow-ssh"
+ security_rule {
+    name                       = "AllowRDPFromBastionOnly"
     priority                   = 120
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
+    destination_port_range     = "3389"
+    source_address_prefix      = "10.0.4.0/26" # Matches your Bastion Subnet range
+    destination_address_prefix = "*"
+  }
+
+  # CRITICAL: Blocks hackers from brute-forcing RDP from the internet
+  security_rule {
+    name                       = "DenyPublicRDP"
+    priority                   = 125
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3389"
+    source_address_prefix      = "Internet"
     destination_address_prefix = "*"
   }
 }
@@ -91,14 +111,14 @@ resource "azurerm_network_security_group" "app" {
   }
 
   security_rule {
-    name                       = "allow-rdp"
-    priority                   = 110
+    name                       = "AllowRDPFromBastionOnly"
+    priority                   = 120
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "3389"
-    source_address_prefix      = "*"
+    source_address_prefix      = "10.0.4.0/26" # Matches your Bastion Subnet range
     destination_address_prefix = "*"
   }
 }
@@ -128,91 +148,4 @@ resource "azurerm_route_table" "main" {
 resource "azurerm_subnet_route_table_association" "web" {
   subnet_id      = azurerm_subnet.web.id
   route_table_id = azurerm_route_table.main.id
-}
-
-resource "azurerm_public_ip" "linux" {
-  name                = "pip-linux-${var.environment}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
-}
-
-resource "azurerm_network_interface" "linux" {
-  name                = "nic-linux-${var.environment}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.web.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.linux.id
-  }
-}
-
-resource "azurerm_linux_virtual_machine" "main" {
-  name                            = "vm-linux-${var.environment}"
-  resource_group_name             = azurerm_resource_group.main.name
-  location                        = azurerm_resource_group.main.location
-  size                            = "Standard_D2s_v3"
-  admin_username                  = var.vm_admin_username
-  admin_password                  = var.vm_admin_password
-  disable_password_authentication = false
-  network_interface_ids           = [azurerm_network_interface.linux.id]
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
-  }
-}
-
-resource "azurerm_public_ip" "windows" {
-  name                = "pip-windows-${var.environment}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
-}
-
-resource "azurerm_network_interface" "windows" {
-  name                = "nic-windows-${var.environment}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.app.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.windows.id
-  }
-}
-
-resource "azurerm_windows_virtual_machine" "main" {
-  name                  = "vm-win-${var.environment}"
-  resource_group_name   = azurerm_resource_group.main.name
-  location              = azurerm_resource_group.main.location
-  size                  = "Standard_D2s_v3"
-  admin_username        = var.vm_admin_username
-  admin_password        = var.windows_vm_admin_password
-  network_interface_ids = [azurerm_network_interface.windows.id]
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "MicrosoftWindowsServer"
-    offer     = "WindowsServer"
-    sku       = "2022-Datacenter"
-    version   = "latest"
-  }
 }
