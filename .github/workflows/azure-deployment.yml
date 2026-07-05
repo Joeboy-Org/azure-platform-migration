@@ -1,0 +1,49 @@
+name: 'Terraform Azure Deployment'
+on:
+  workflow_dispatch:
+    inputs:
+      GH_ENVIRONMENT:
+        type: choice
+        description: 'What github environment would you like to run the deployment for?'
+        required: true
+        default: 'development'
+        options:
+          - development
+          - production
+      TF_ENVIRONMENT:
+        type: choice
+        description: 'What terraform environment would you like to run the deployment for'
+        required: true
+        default: 'dev'
+        options:
+          - dev
+          - prod
+      TF_WORKSPACE:
+        type: choice
+        description: 'What terraform workspace would you like to run the deployment for'
+        required: true
+        default: 'platform-legacy'
+        options:
+          - platform-legacy
+          - platform-greenfield
+
+jobs:
+  TfCheckAndPlan:
+    name: "${{ inputs.GH_ENVIRONMENT }} Terraform Check and Plan"
+    uses: ./.github/workflows/check-terraform.yml
+    secrets: inherit
+    with:
+      GH_ENVIRONMENT: ${{ inputs.GH_ENVIRONMENT }}
+      TF_ENVIRONMENT: ${{ inputs.TF_ENVIRONMENT }}
+      TF_WORKSPACE:  ${{ inputs.TF_WORKSPACE}}
+      TF_PLAN: true
+
+  TfApply:
+    name: "${{ inputs.GH_ENVIRONMENT }} Terraform Deployment"
+    uses: ./.github/workflows/tfapply.yml
+    needs: ["TfCheckAndPlan"] 
+    secrets: inherit
+    with:
+      GH_ENVIRONMENT: ${{ inputs.GH_ENVIRONMENT }}
+      TF_ENVIRONMENT: ${{ inputs.TF_ENVIRONMENT }}
+      TF_WORKSPACE:  ${{ inputs.TF_WORKSPACE}}

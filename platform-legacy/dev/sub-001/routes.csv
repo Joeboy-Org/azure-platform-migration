@@ -1,0 +1,7 @@
+name,address_prefix,next_hop_type,next_hop_ip
+route-to-hub,10.100.0.0/16,VirtualAppliance,10.0.0.4
+route-to-onprem,192.168.0.0/24,VirtualAppliance,10.0.0.4
+route-to-shared-svc,10.150.0.0/16,VirtualAppliance,10.0.0.4
+route-to-mgmt,10.200.0.0/16,VirtualNetworkGateway,
+route-blackhole-rfc1918,172.16.0.0/12,None,
+route-internet,0.0.0.0/0,Internet,

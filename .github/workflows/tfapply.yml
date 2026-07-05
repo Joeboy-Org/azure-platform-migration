@@ -1,0 +1,112 @@
+name: 'Terraform Apply'
+
+on:
+  workflow_call:
+    inputs:
+      TF_ENVIRONMENT:
+        required: true
+        type: string
+      GH_ENVIRONMENT:
+        required: true
+        type: string
+      TF_WORKSPACE:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+
+concurrency: tf_${{ inputs.GH_ENVIRONMENT }}
+
+jobs:
+  TerraformPlan:
+    name: Terraform Plan - ${{ inputs.GH_ENVIRONMENT }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.GH_ENVIRONMENT  }}
+    steps:
+      - name: Repo Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: terraform init
+
+      - name: Terraform Plan
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: terraform plan -out=${{ inputs.TF_ENVIRONMENT }}-terraform-plan-${{ github.run_id }}
+
+      - name: Upload file to Azure Blob Storage #--overwrite
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: |
+            az storage blob upload \
+                --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+                --container-name ${{ secrets.AZURE_CONTAINER_NAME }} \
+                --name ${{ inputs.TF_ENVIRONMENT }}-terraform-plan-${{ github.run_id }} \
+                --file ${{ inputs.TF_ENVIRONMENT }}-terraform-plan-${{ github.run_id }} \
+                --auth-mode login
+
+  TerraformApproval:
+    name: Manual Approval - ${{ inputs.GH_ENVIRONMENT }}
+    needs: [TerraformPlan]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.GH_ENVIRONMENT }}-approval-group
+    steps:
+      - name: Display GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+  TerraformApply:
+    name: Terraform Apply - ${{ inputs.GH_ENVIRONMENT }}
+    needs: [TerraformApproval]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.GH_ENVIRONMENT  }}
+    steps:
+      - name: Repo Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: terraform init
+
+      - name: Download tfplan from Azure Blob Storage
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: |
+            az storage blob download \
+                --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+                --container-name ${{ secrets.AZURE_CONTAINER_NAME }} \
+                --name ${{ inputs.TF_ENVIRONMENT }}-terraform-plan-${{ github.run_id }} \
+                --file ${{ inputs.TF_ENVIRONMENT }}-terraform-plan-${{ github.run_id }} \
+                --auth-mode login
+
+      - name: Terraform Apply
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: terraform apply -input=false ${{ inputs.TF_ENVIRONMENT }}-terraform-plan-${{ github.run_id }}

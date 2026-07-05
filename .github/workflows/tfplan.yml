@@ -1,0 +1,51 @@
+name: 'Terraform Plan'
+
+on:
+  workflow_call:
+    inputs:
+      TF_ENVIRONMENT:
+        required: true
+        type: string
+      GH_ENVIRONMENT:
+        required: true
+        type: string
+      TF_WORKSPACE:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+
+# concurrency: tf_${{ inputs.GH_ENVIRONMENT }}
+
+jobs:
+  TerraformPlan:
+    name: Terraform Plan - ${{ inputs.GH_ENVIRONMENT }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.GH_ENVIRONMENT  }}
+    steps:
+      - name: Repo Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ vars.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: terraform init
+
+      - name: Terraform Plan
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        working-directory: ${{ inputs.TF_WORKSPACE }}
+        run: terraform plan

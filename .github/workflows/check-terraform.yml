@@ -1,0 +1,97 @@
+name: 'Terraform Check'
+
+on:
+    workflow_call:
+      inputs:
+        TF_ENVIRONMENT:
+            required: true
+            type: string
+        GH_ENVIRONMENT:
+            required: true
+            type: string
+        TF_WORKSPACE:
+            required: true
+            type: string
+        TF_PLAN:
+            required: true
+            type: boolean
+  
+permissions:
+    id-token: write
+    contents: read
+  
+jobs:
+    TerraformFormatCheck:
+        name: Terraform Format and Validate - ${{ inputs.GH_ENVIRONMENT }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Repo Checkout
+              uses: actions/checkout@v4
+
+            - uses: hashicorp/setup-terraform@v3
+              with:
+                terraform_version: ${{ vars.TERRAFORM_VERSION }}   
+
+            - name: Terraform Init
+              working-directory: ${{ inputs.TF_WORKSPACE }}
+              run: terraform init -backend=false
+
+            - name: Terraform Format Check
+              working-directory: ${{ inputs.TF_WORKSPACE }}
+              continue-on-error: true 
+              run: terraform fmt -check -recursive || (echo "Terraform fmt required for the following files:" && terraform fmt -diff -recursive && exit 1)
+
+            - name: Terraform Validate
+              if: always()
+              working-directory: ${{ inputs.TF_WORKSPACE }}
+              run: terraform validate
+
+    TflintCheck:
+        name: Run tfLint Check - ${{ inputs.GH_ENVIRONMENT }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Repo Checkout
+              uses: actions/checkout@v4
+
+            - name: Cache tfLint Plugins
+              uses: actions/cache@v4
+              with:
+                path: ~/.tflint.d/plugins
+                key: ${{ runner.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
+
+            - uses: terraform-linters/setup-tflint@v4
+              name: Setup TFLint
+              with:
+                tflint_version: latest
+
+            - name: Run tfLint
+              working-directory: ${{ inputs.TF_WORKSPACE }}
+              run: tflint -f compact
+
+    TrivyCheck:
+        name: Run Trivy Scan - ${{ inputs.GH_ENVIRONMENT }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Repo Checkout
+              uses: actions/checkout@v4
+
+            - name: Run Trivy tfsec scan
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                scan-type: 'fs'
+                scan-ref: ${{ inputs.TF_WORKSPACE }}
+                ignore-unfixed: true
+                scanners: 'misconfig'
+                format: 'table'
+                severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+                exit-code: '1'
+
+    tfPlan:
+        name: Terraform - ${{ inputs.GH_ENVIRONMENT }}
+        if: ${{ inputs.TF_PLAN }}
+        uses: ./.github/workflows/tfplan.yml # This should work if file exists
+        secrets: inherit
+        with:
+            TF_ENVIRONMENT: ${{ inputs.TF_ENVIRONMENT }}
+            GH_ENVIRONMENT: ${{ inputs.GH_ENVIRONMENT }}
+            TF_WORKSPACE: ${{ inputs.TF_WORKSPACE }}
