@@ -30,7 +30,7 @@ on:
 jobs:
   TfCheckAndPlan:
     name: "${{ inputs.GH_ENVIRONMENT }} Terraform Check and Plan"
-    uses: ./.github/workflows/check-terraform.yml
+    uses: Joeboy-Org/azure-platform-migration/.github/workflows/check-terraform.yml@main
     secrets: inherit
     with:
       GH_ENVIRONMENT: ${{ inputs.GH_ENVIRONMENT }}
@@ -40,7 +40,7 @@ jobs:
 
   TfApply:
     name: "${{ inputs.GH_ENVIRONMENT }} Terraform Deployment"
-    uses: ./.github/workflows/tfapply.yml
+    uses: Joeboy-Org/azure-platform-migration/.github/workflows/tfapply.yml@main
     needs: ["TfCheckAndPlan"] 
     secrets: inherit
     with:

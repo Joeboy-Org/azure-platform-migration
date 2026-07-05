@@ -127,22 +127,6 @@ resource "azurerm_subnet_network_security_group_association" "app" {
   network_security_group_id = azurerm_network_security_group.app.id
 }
 
-resource "azurerm_route_table" "main" {
-  name                = "rt-prod"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  route {
-    name           = "internet"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "Internet"
-  }
-}
-
-resource "azurerm_subnet_route_table_association" "web" {
-  subnet_id      = azurerm_subnet.web.id
-  route_table_id = azurerm_route_table.main.id
-}
 
 resource "azurerm_public_ip" "linux" {
   name                = "pip-linux-prod"

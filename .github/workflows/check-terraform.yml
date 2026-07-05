@@ -89,7 +89,7 @@ jobs:
     tfPlan:
         name: Terraform - ${{ inputs.GH_ENVIRONMENT }}
         if: ${{ inputs.TF_PLAN }}
-        uses: ./.github/workflows/tfplan.yml # This should work if file exists
+        uses: Joeboy-Org/azure-platform-migration/.github/workflows/tfplan.yml@main
         secrets: inherit
         with:
             TF_ENVIRONMENT: ${{ inputs.TF_ENVIRONMENT }}
